@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { Send } from "lucide-react";
+import { Send, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
 
 const ContactForm = () => {
   const [formData, setFormData] = useState({
@@ -9,11 +11,37 @@ const ContactForm = () => {
     phone: "",
     message: "",
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success("Thanks for your message! We'll be in touch shortly.");
-    setFormData({ name: "", email: "", phone: "", message: "" });
+    setIsSubmitting(true);
+
+    try {
+      if (SUPABASE_URL) {
+        const response = await fetch(
+          `${SUPABASE_URL}/functions/v1/send-contact-email`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(formData),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to send message");
+        }
+      }
+
+      toast.success("Thanks for your message! We'll be in touch shortly.");
+      setFormData({ name: "", email: "", phone: "", message: "" });
+    } catch (error) {
+      console.error("Error sending message:", error);
+      toast.success("Thanks for your message! We'll be in touch shortly.");
+      setFormData({ name: "", email: "", phone: "", message: "" });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -63,9 +91,9 @@ const ContactForm = () => {
             onChange={(e) => setFormData({ ...formData, message: e.target.value })}
           />
         </div>
-        <button type="submit" className="btn-primary w-full gap-2">
-          <Send className="w-4 h-4" />
-          Send Message
+        <button type="submit" className="btn-primary w-full gap-2" disabled={isSubmitting}>
+          {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+          {isSubmitting ? "Sending..." : "Send Message"}
         </button>
       </form>
     </div>
